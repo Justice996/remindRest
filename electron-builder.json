@@ -1,0 +1,13 @@
+{
+  "appId": "com.example.remindrest",
+  "productName": "RemindRest",
+  "win": {
+    "target": "nsis",
+    "icon": "assets/icon.ico"
+  },
+  "files": [
+    "dist/**/*",
+    "src/renderer/index.html",
+    "assets/**/*"
+  ]
+}

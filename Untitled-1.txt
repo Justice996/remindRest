@@ -1,0 +1,9 @@
+remindRest/
+├─ package.json
+├─ tsconfig.json
+├─ electron-builder.json
+├─ src/
+│  ├─ main.ts         // 主进程，计时与窗口控制
+│  └─ renderer/
+│      ├─ index.html  // 渲染进程页面
+│      └─ renderer.ts // 渲染进程动画与交互

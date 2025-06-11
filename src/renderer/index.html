@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>休息提醒</title>
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      user-select: none;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .emoji-container {
+      position: absolute;
+      font-size: 15rem;
+      will-change: transform;
+      transition: top 0.3s, left 0.3s;
+    }
+    .tip {
+      color: #fff;
+      font-size: 3vw; /* 增大字体 */
+      margin-top: 2vw;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+      text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.8); /* 添加文字阴影 */
+      font-weight: bold; /* 加粗 */
+      animation: pulse 2s infinite; /* 添加脉动动画 */
+      background-color: rgba(0, 0, 0, 0.5); /* 半透明背景 */
+      padding: 15px 25px; /* 添加内边距 */
+      border-radius: 10px; /* 圆角 */
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body style="pointer-events: auto;">
+  <div style="pointer-events: auto;">
+    <div class="tip" style="pointer-events: auto;">休息一下吧！<br>点击任意处关闭</div>
+  </div>
+  <script src="./renderer.js"></script>
+  <script>
+    const emojis = ['🧘', '😊', '🌟', '🎈', '🍎', '🌿', '🍵', '💤', '🌙', '🌈', '🦋', '🐬', '🌺', '🌴', '🏖️', '🌊', '🏞️', '🍃'];
+    const container = document.body;
+    let emojiCount = 0;
+    const maxEmojis = 40;
+    const emojiSize = 240; // 大约15rem的像素值
+    const emojiElements = [];
+    let isGenerating = false; // 控制生成过程
+    
+    // 每次生成几个emoji
+    function createEmojiBatch() {
+      if (isGenerating) return; // 如果正在生成，则跳过
+      isGenerating = true;
+      
+      const batchSize = Math.floor(Math.random() * 3) + 3; // 每次生成3-5个
+      let created = 0;
+      
+      function createOneEmoji() {
+        if (created >= batchSize || emojiCount >= maxEmojis) {
+          isGenerating = false;
+          // 如果还没有生成完所有emoji，设置一个延迟后继续生成
+          if (emojiCount < maxEmojis) {
+            setTimeout(createEmojiBatch, 2000); // 每2秒生成一批
+          }
+          return;
+        }
+        
+        const emoji = document.createElement('div');
+        emoji.className = 'emoji-container';
+        const randomEmojiIndex = Math.floor(Math.random() * emojis.length);
+        const emojiText = emojis[randomEmojiIndex];
+        emoji.textContent = emojiText;
+        
+        // 从屏幕顶部开始
+        const x = Math.random() * (window.innerWidth - emojiSize);
+        const y = -emojiSize; // 设置在屏幕上方
+        
+        // 随机水平速度，垂直速度向下
+        const speedX = (Math.random() - 0.5) * 8;
+        const speedY = Math.random() * 5 + 5; // 确保向下的速度
+        
+        emoji.style.left = x + 'px';
+        emoji.style.top = y + 'px';
+        
+        // 存储emoji的属性
+        const emojiData = {
+          element: emoji,
+          x: x,
+          y: y,
+          speedX: speedX,
+          speedY: speedY,
+          width: emojiSize,
+          height: emojiSize,
+          type: emojiText, // 存储emoji类型
+          toRemove: false // 标记是否需要移除
+        };
+        
+        emojiElements.push(emojiData);
+        container.appendChild(emoji);
+        emojiCount++;
+        created++;
+        
+        // 递归创建下一个，但添加一点延迟，使它们不会同时出现
+        setTimeout(createOneEmoji, 200); // 每200毫秒创建一个
+      }
+      
+      // 开始创建第一个
+      createOneEmoji();
+    }
+    
+    // 检测碰撞
+    function checkCollision(emoji1, emoji2) {
+      return (
+        emoji1.x < emoji2.x + emoji2.width &&
+        emoji1.x + emoji1.width > emoji2.x &&
+        emoji1.y < emoji2.y + emoji2.height &&
+        emoji1.y + emoji1.height > emoji2.y
+      );
+    }
+    
+    // 更新emoji位置
+    function updateEmojis() {
+      // 更新位置
+      for(let i = 0; i < emojiElements.length; i++) {
+        const emoji = emojiElements[i];
+        
+        // 更新位置
+        emoji.x += emoji.speedX;
+        emoji.y += emoji.speedY;
+        
+        // 边界检测
+        if(emoji.x <= 0 || emoji.x + emoji.width >= window.innerWidth) {
+          emoji.speedX = -emoji.speedX * 0.8; // 添加一些能量损失
+          emoji.x = Math.max(0, Math.min(emoji.x, window.innerWidth - emoji.width));
+        }
+        
+        if(emoji.y <= 0) {
+          emoji.speedY = Math.abs(emoji.speedY) * 0.8; // 确保向下移动
+          emoji.y = 0;
+        } else if(emoji.y + emoji.height >= window.innerHeight) {
+          emoji.speedY = -emoji.speedY * 0.8; // 反弹，添加一些能量损失
+          emoji.y = window.innerHeight - emoji.height;
+        }
+        
+        // 添加重力效果
+        emoji.speedY += 0.2;
+      }
+      
+      // 检测emoji之间的碰撞
+      for(let i = 0; i < emojiElements.length; i++) {
+        for(let j = i + 1; j < emojiElements.length; j++) {
+          const emoji1 = emojiElements[i];
+          const emoji2 = emojiElements[j];
+          
+          if(checkCollision(emoji1, emoji2)) {
+            // 检查是否是相同类型的emoji
+            if(emoji1.type === emoji2.type && !emoji1.toRemove && !emoji2.toRemove) {
+              // 相同类型的emoji碰撞，标记为移除
+              emoji1.toRemove = true;
+              emoji2.toRemove = true;
+              
+              // 创建消失动画效果 - 延长动画时间到1.5秒
+              emoji1.element.style.transition = 'transform 1.5s, opacity 1.5s';
+              emoji2.element.style.transition = 'transform 1.5s, opacity 1.5s';
+              
+              emoji1.element.style.transform = 'scale(0) rotate(360deg)';
+              emoji2.element.style.transform = 'scale(0) rotate(-360deg)';
+              
+              emoji1.element.style.opacity = '0';
+              emoji2.element.style.opacity = '0';
+              
+              continue; // 跳过后续的碰撞处理
+            }
+            
+            // 不同类型的emoji或已标记为移除的emoji，执行普通碰撞
+            // 简单的碰撞响应 - 交换速度
+            const tempSpeedX = emoji1.speedX;
+            const tempSpeedY = emoji1.speedY;
+            
+            emoji1.speedX = emoji2.speedX * 0.9;
+            emoji1.speedY = emoji2.speedY * 0.9;
+            
+            emoji2.speedX = tempSpeedX * 0.9;
+            emoji2.speedY = tempSpeedY * 0.9;
+            
+            // 稍微分开它们以避免粘在一起
+            const dx = emoji2.x - emoji1.x;
+            const dy = emoji2.y - emoji1.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if(distance > 0) {
+              const overlap = (emoji1.width + emoji2.width) / 2 - distance;
+              const moveX = (dx / distance) * overlap / 2;
+              const moveY = (dy / distance) * overlap / 2;
+              
+              emoji1.x -= moveX;
+              emoji1.y -= moveY;
+              emoji2.x += moveX;
+              emoji2.y += moveY;
+            }
+          }
+        }
+      }
+      
+      // 移除标记为删除的emoji - 延长等待时间到1.5秒
+      for(let i = emojiElements.length - 1; i >= 0; i--) {
+        if(emojiElements[i].toRemove) {
+          // 延迟移除元素，等待动画完成
+          setTimeout(() => {
+            if(emojiElements[i] && emojiElements[i].element.parentNode) {
+              emojiElements[i].element.parentNode.removeChild(emojiElements[i].element);
+            }
+          }, 1500); // 与动画时间匹配
+          
+          // 从数组中移除
+          emojiElements.splice(i, 1);
+          emojiCount--;
+        }
+      }
+      
+      // 如果emoji数量不足且当前没有在生成中，生成新的
+      if(emojiCount < maxEmojis && emojiElements.length < maxEmojis && !isGenerating) {
+        createEmojiBatch();
+      }
+      
+      // 应用新位置
+      for(let i = 0; i < emojiElements.length; i++) {
+        const emoji = emojiElements[i];
+        if(!emoji.toRemove) { // 只更新未标记为移除的emoji
+          emoji.element.style.left = emoji.x + 'px';
+          emoji.element.style.top = emoji.y + 'px';
+        }
+      }
+      
+      requestAnimationFrame(updateEmojis);
+    }
+    
+    // 开始生成emoji
+    createEmojiBatch();
+    
+    // 开始动画
+    updateEmojis();
+  </script>
+</body>
+</html>
+<style>
+    body {
+      margin: 0;
+      background: transparent;  /* 改为透明 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      user-select: none;
+      cursor: pointer;
+    }
+    .emoji {
+      font-size: 12vw;
+      animation: bounce 1s infinite alternate, scale 2s infinite alternate;
+      will-change: transform;
+    }
+    @keyframes bounce {
+      0% { transform: translateY(0);}
+      100% { transform: translateY(-30px);}
+    }
+    @keyframes scale {
+      0% { transform: scale(1);}
+      100% { transform: scale(1.2);}
+    }
+    .tip {
+      color: #fff;
+      font-size: 2vw;
+      margin-top: 2vw;
+      text-align: center;
+    }
+  </style>
+</html>
